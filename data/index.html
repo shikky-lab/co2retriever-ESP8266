@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>ESP-WROOM-02 セットアップ</title>
+  <link rel="stylesheet" type="text/css" href="css/site.css">
+  <script src="js/jquery.min.js"></script>
+  <script src="js/eeprom.js"></script>
+</head>
+<body style='margin:10px'>
+  <form method='POST' action=''>
+    <table cellpadding='3' cellspacing='3' border='0' width='100%'>
+      <tr>
+        <td><div class='title1'>ESP-WROOM-02 セットアップ</div></td>
+      </tr>
+      <tr>
+      <td>
+        <table cellpadding='3' cellspacing='3' border='0' width='100%'>
+          <tr>
+            <td><div class='title2'>SSID</div></td>
+          </tr>
+          <tr>
+            <td>
+              <table cellpadding='1' cellspacing='1' border='0' width='100%'>
+                <tr>
+                  <td>
+                    <input type='text' id='connectionInfo-ssid' name='connectionInfo-ssid' maxlength='50' required='required'>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td><div class='title2 required'>Password</div></td>
+          </tr>
+          <tr>
+            <td>
+              <table cellpadding='1' cellspacing='1' border='0' width='100%'>
+                <tr>
+                  <td>
+                    <input type='text' id='connectionInfo-password' name='connectionInfo-password' maxlength='50' required='required'>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td height='10'></td>
+          </tr>
+          <tr align='center'>
+            <td>
+              <button class='btn' type='submit' name='connectionInfoSet' value='1'>保存</button>
+            </td>
+          </tr>
+        </table>
+      </td>
+      </tr>
+      <tr>
+        <td height='30'>
+        </td>
+      </tr>
+    </table>
+  </form>
+</body>
+</html>
