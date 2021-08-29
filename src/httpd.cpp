@@ -3,6 +3,7 @@
 #include "httpd.h"
 #include "eeprom_util.h"
 #include "properties.h"
+#include "common.h"
 
 extern ESP8266WebServer server;
 extern EEPROM_struct eeprom;
@@ -13,6 +14,14 @@ void moveServo(void){
     delay(500);
     servo.write(SERVO_DEFAULT);
     server.send(200, F("text/plain"), "succeeded!");
+}
+
+void getco2(void){
+
+    String result = "{";
+    result += "\"co2\":"+String(co2ppm);
+    result += "}";
+    server.send(200, F("application/json"),result);
 }
 
 /**
@@ -28,6 +37,8 @@ void setupHttpd(void) {
   server.on("/eeprom", setupHttpdEeprom);
 
   server.on("/servo-on", moveServo);
+
+  server.on("/co2", getco2);
 
   // 上記以外アクセス時のハンドラ指定
   server.onNotFound(handleConfirmFile);
@@ -106,9 +117,7 @@ void handleConfirmFile(void) {
     }
 
     server.send(404, F("text/plain"), message);
-
   }
-
 }
 
 /**
@@ -146,7 +155,8 @@ void handleFileRead(String path) {
     File file = SPIFFS.open(path, "r");
 
     // 読み込んだファイルをブラウザ側に返す
-    size_t sent = server.streamFile(file, contentType);
+    server.streamFile(file, contentType);
+    // size_t sent = server.streamFile(file, contentType);
 
     // ファイルクローズ
     file.close();

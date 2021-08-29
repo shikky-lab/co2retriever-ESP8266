@@ -10,6 +10,7 @@
 #include <Servo.h>
 #include "properties.h"
 #include <Ticker.h>
+#include "common.h"
 
 const char *host = "LNLD-esp";
 
@@ -29,6 +30,7 @@ const int servo_pin = 12;
 const int boot_switch_pin = 13; //+でSTモード，-でAPモード
 const int ST_mode_led = 5;
 const int AP_mode_led = 4;
+const int co2_pwm_in = 14;
 
 void brinkForError()
 {
@@ -48,6 +50,26 @@ void flipST_mode_led()
   digitalWrite(ST_mode_led, !digitalRead(ST_mode_led));
 }
 
+volatile unsigned int co2ppm=0;
+IRAM_ATTR void pwmInChangeHandler() {
+  static unsigned long previousHighTiming = 0;
+  static unsigned long ellapsedTime;
+  if(digitalRead(co2_pwm_in)){//when rising
+    unsigned long currentTIme = millis();
+    unsigned long T = currentTIme - previousHighTiming;
+
+    /* caluclate co2 ppm. It needs the time between previous high and next high. So caluclation should be done when the signal rise up(after 2nd times).*/
+    if(previousHighTiming!=0){
+      co2ppm=2000*(ellapsedTime-2)/(T-4);
+      Serial.println(co2ppm);
+    }
+
+    previousHighTiming=currentTIme;
+  }else{//when falling
+    ellapsedTime = millis() - previousHighTiming;
+  }
+}
+
 void setup()
 {
   /* set up serials */
@@ -59,6 +81,7 @@ void setup()
   pinMode(ST_mode_led, OUTPUT);
   pinMode(AP_mode_led, OUTPUT);
   pinMode(boot_switch_pin, INPUT_PULLUP);
+  pinMode(co2_pwm_in, INPUT_PULLUP);
   // first, all leds are ON
   digitalWrite(ST_mode_led, HIGH);
   digitalWrite(AP_mode_led, HIGH);
@@ -85,7 +108,6 @@ void setup()
     // set indicator
     digitalWrite(AP_mode_led, LOW);
     flicker.attach(1, flipST_mode_led);
-
     //set ssid/password
     const char *ssid = eeprom.connectionInfo.ssid;
     const char *password = eeprom.connectionInfo.password;
@@ -125,8 +147,10 @@ void setup()
   servo.attach(servo_pin);
   servo.write(SERVO_DEFAULT);
 
+  attachInterrupt(digitalPinToInterrupt(co2_pwm_in),pwmInChangeHandler,CHANGE);
   Serial.println("Ready");
 }
+
 
 void loop()
 {
