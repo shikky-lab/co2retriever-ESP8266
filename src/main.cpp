@@ -26,6 +26,9 @@ EEPROM_struct eeprom;
 Servo servo;
 Ticker flicker;
 
+//pin assign
+// https://qiita-user-contents.imgix.net/https%3A%2F%2Fqiita-image-store.s3.amazonaws.com%2F0%2F55103%2F56eec04e-f231-8f4f-d792-840d36d791d7.png?ixlib=rb-4.0.0&auto=format&gif-q=60&q=75&w=1400&fit=max&s=c463cc4daec76e1a62fd74636fba93f6
+
 const int servo_pin = 12;
 const int boot_switch_pin = 13; //+でSTモード，-でAPモード
 const int ST_mode_led = 5;
