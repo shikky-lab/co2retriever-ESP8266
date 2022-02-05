@@ -11,6 +11,8 @@
 #include "properties.h"
 #include <Ticker.h>
 #include "common.h"
+#include "debug_util.h"
+#include "DebugLogArray.h"
 
 const char *host = "LNLD-esp";
 
@@ -23,17 +25,28 @@ const char *apmode_password = "password";
 ESP8266WebServer server(HTTPD_PORT);
 EEPROM_struct eeprom;
 
-Servo servo;
+// Servo servo;
 Ticker flicker;
+Ticker co2PollingExecutor;
+
+// volatile char debugLog[DEBUG_LOG_SIZE]={""};
+// String debugLog[DEBUG_LOG_SIZE]={""};
+// String debugLog;
+DebugLogArray debugLog;
+
 
 //pin assign
 // https://qiita-user-contents.imgix.net/https%3A%2F%2Fqiita-image-store.s3.amazonaws.com%2F0%2F55103%2F56eec04e-f231-8f4f-d792-840d36d791d7.png?ixlib=rb-4.0.0&auto=format&gif-q=60&q=75&w=1400&fit=max&s=c463cc4daec76e1a62fd74636fba93f6
-
 const int servo_pin = 12;
 const int boot_switch_pin = 13; //+でSTモード，-でAPモード
 const int ST_mode_led = 5;
 const int AP_mode_led = 4;
 const int co2_pwm_in = 14;
+//softwareSerial使うとした14,と16くらいしか余ってなさそう
+
+const char readValueCommand=0x86;
+const char toggleSelfCalibration=0x79;
+const int COMMAND_SIZE=9;//8byte+checksum
 
 void brinkForError()
 {
@@ -53,32 +66,28 @@ void flipST_mode_led()
   digitalWrite(ST_mode_led, !digitalRead(ST_mode_led));
 }
 
-volatile unsigned int co2ppm=0;
-IRAM_ATTR void pwmInChangeHandler() {
-  static unsigned long previousHighTiming = 0;
-  static unsigned long ellapsedTime;
-  if(digitalRead(co2_pwm_in)){//when rising
-    unsigned long currentTIme = millis();
-    unsigned long T = currentTIme - previousHighTiming;
+void pollCo2Value(){
+  char readCo2Commands[]={
+    0xff,
+    0x01,
+    readValueCommand,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x79
+  };
+  Serial.write(readCo2Commands,sizeof readCo2Commands);
 
-    /* caluclate co2 ppm. It needs the time between previous high and next high. So caluclation should be done when the signal rise up(after 2nd times).*/
-    if(previousHighTiming!=0){
-      co2ppm=2000*(ellapsedTime-2)/(T-4);
-      Serial.println(co2ppm);
-    }
-
-    previousHighTiming=currentTIme;
-  }else{//when falling
-    ellapsedTime = millis() - previousHighTiming;
-  }
 }
+
+volatile unsigned int co2ppm=0;
 
 void setup()
 {
   /* set up serials */
-  Serial.begin(74880); //速度変更すると不調のため，espのデフォルト速度を指定．
-  Serial.println("");
-  Serial.println("Booting");
+  Serial.begin(9600); //co2センサとのやり取りに使うため，シリアルデバッグは不可．
 
   /* set up digital io */
   pinMode(ST_mode_led, OUTPUT);
@@ -99,6 +108,9 @@ void setup()
 
   /*set up SPIFFS*/
   SPIFFS.begin();
+
+  /*for debug. check contents of spiffs*/
+  // showAllFilesInSPIFFS();
 
   /*set up eeprom*/
   EEPROM.begin(sizeof(eeprom));
@@ -122,7 +134,6 @@ void setup()
     while (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
       WiFi.begin(ssid, password);
-      Serial.println("Retrying connection...");
     }
 
     // start mDNS to resolve myself by host name.
@@ -146,17 +157,39 @@ void setup()
   /* set up HTTP Server */
   setupHttpd();
 
-  /* set up servos */
-  servo.attach(servo_pin);
-  servo.write(SERVO_DEFAULT);
+  co2PollingExecutor.attach_ms(1000,pollCo2Value);
+  // attachInterrupt(digitalPinToInterrupt(co2_pwm_in),pwmInChangeHandler,CHANGE);
 
-  attachInterrupt(digitalPinToInterrupt(co2_pwm_in),pwmInChangeHandler,CHANGE);
-  Serial.println("Ready");
+  debugLog.add("started");
 }
 
+// 取得した値をスペース区切りで表示．
+String parseReceivedInfoForDebug(char *receivedRawData){
+      char receivedConvertedData[200]={0};
+      int curPos=0;
+      for(int j=0;j<COMMAND_SIZE;j++){
+        int strlen=sprintf(receivedConvertedData+curPos,"%d",receivedRawData[j]);
+        // curPos++;
+        *(receivedConvertedData+curPos)=' ';
+        curPos+=strlen;
+      }
+      debugLog.add(String(receivedConvertedData));
+}
 
 void loop()
 {
   ArduinoOTA.handle();
   server.handleClient();
+
+    if(Serial.available()>=COMMAND_SIZE){
+      char receivedRawData[COMMAND_SIZE]={0};
+      int readSize=Serial.readBytes(receivedRawData,sizeof receivedRawData);
+
+      // debugLog.add(parseReceivedInfoForDebug(receivedRawData));
+
+      if(receivedRawData[1]==readValueCommand){
+        co2ppm=(receivedRawData[2]<<8)+receivedRawData[3];
+      }
+      debugLog.add(String(co2ppm));
+    }
 }

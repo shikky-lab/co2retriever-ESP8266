@@ -8,20 +8,17 @@
 extern ESP8266WebServer server;
 extern EEPROM_struct eeprom;
 
-extern Servo servo;
-void moveServo(void){
-    servo.write(SERVO_ON);
-    delay(500);
-    servo.write(SERVO_DEFAULT);
-    server.send(200, F("text/plain"), "succeeded!");
-}
-
 void getco2(void){
 
     String result = "{";
     result += "\"co2\":"+String(co2ppm);
     result += "}";
     server.send(200, F("application/json"),result);
+}
+
+void getDebuglog(void){
+
+    server.send(200, F("application/text"),debugLog.to_string());
 }
 
 /**
@@ -33,12 +30,11 @@ void setupHttpd(void) {
 
   server.on("/index.html", setupHttpdRoot);
 
-  // http://192.168.5.1/eeprom アクセス時に setupHttpdEeprom() を実行
+  // /eeprom アクセス時に setupHttpdEeprom() を実行
   server.on("/eeprom", setupHttpdEeprom);
 
-  server.on("/servo-on", moveServo);
-
   server.on("/co2", getco2);
+  server.on("/log", getDebuglog);
 
   // 上記以外アクセス時のハンドラ指定
   server.onNotFound(handleConfirmFile);
@@ -46,7 +42,7 @@ void setupHttpd(void) {
   // Webサーバ起動
   server.begin();
   
-  Serial.println("HTTP server started");
+  // Serial.println("HTTP server started");
 }
 /**
  * ルートディレクトリアクセス時のハンドラ
@@ -56,12 +52,12 @@ void setupHttpdRoot(void) {
   // 「設定する」ボタン押下時
   if(server.hasArg("connectionInfoSet")) {
 
-    // トップページで選択した性別を取得
+    // トップページで選択したSSID
     if(server.hasArg("connectionInfo-ssid")) {
       strncpy( eeprom.connectionInfo.ssid, server.arg("connectionInfo-ssid").c_str(), EEPROM_SSID_SIZE);
     }
 
-    // トップページで入力した名前を取得
+    // トップページで入力したPasWord
     if(server.hasArg("connectionInfo-password")) {
       strncpy( eeprom.connectionInfo.password, server.arg("connectionInfo-password").c_str(), EEPROM_PASS_SIZE);
     }
