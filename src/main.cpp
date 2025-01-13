@@ -14,6 +14,10 @@
 #include "debug_util.h"
 #include "DebugLogArray.h"
 
+/*
+Webサーバ部分の実装は、 https://www.technoveins.co.jp/tvblog/index.php/all-contents/93-electronic-work/73-esp32-html 参照。
+*/
+
 const char *host = "LNLD-esp";
 
 /* AP mode setting*/
